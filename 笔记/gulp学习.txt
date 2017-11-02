@@ -1,0 +1,329 @@
+    使用npm命令，全局安装和项目安装gulp。（全局安装的目的，是为了通过它执行gulp任务，本地安装gulp是为了调用gulp插件的功能）
+
+   package.json是nodejs项目配置文件（必不可少的配置文件，它应该存放在项目根目录下，注意，因为它是一个json文件，所以不能在文件内写注释），--save-dev：表示将所下载的包保存至package.json中的devDependencies节点中（开发依赖关系），不指定-dev将保存至dependencies（依赖）节点中。
+
+   为什么会保存值package.json？因为Node插件包过于庞大，所以不加入版本管理，将配置信息写入package.json并将其加入版本管理，其他开发者对应下载即可（npm install，会根据package.json下载所有需要的包，npm install --production只下载dependencies节点的包）
+
+   写在某个包的话，使用npm uninstall <name> [-g] [--save-dev]，最好不要使用-g
+
+   更新插件：npm update <name> [-g] [--save-dev]，更新全部插件：npm update [--save-dev]
+
+   查看当前目录已安装的插件：npm list
+
+   关于package.json，它是这样一个文件：（一般使用命令cnpm init来根据提示创建）
+{
+  "name": "test",   //项目名称（必须）
+  "version": "1.0.0",   //项目版本（必须）
+  "description": "This is for study gulp project !",   //项目描述（必须）
+  "homepage": "",   //项目主页
+  "repository": {    //项目资源库
+    "type": "git",
+    "url": "https://git.oschina.net/xxxx"
+  },
+  "author": {    //项目作者信息
+    "name": "surging",
+    "email": "surging2@qq.com"
+  },
+  "license": "ISC",    //项目许可协议
+  "devDependencies": {    //项目依赖的插件
+    "gulp": "^3.8.11",
+    "gulp-less": "^3.0.0"
+  }
+}
+entry point：入口文件；test command：测试命令；git repository：git地址；keywords：关键字；
+
+   定位好目录后，使用cnpm install <name> --save-dev安装插件（同时安装多个，只需要空格后写下一个插件的名称即可）
+
+   gulpfile.js是gulp项目的配置文件，是位于项目根目录的普通js文件（将gulpfile.js放入其他的文件夹下也可以，但尽量不要这么做），它大致是这样的一个文件：
+
+//导入工具包 require('node_modules里对应模块')
+var gulp = require('gulp'), //本地安装gulp所用到的地方
+    less = require('gulp-less');
+
+//定义一个testLess任务（自定义任务名称）
+gulp.task('testLess', function () {
+    gulp.src('src/less/index.less') //该任务针对的文件
+        .pipe(less()) //该任务调用的模块
+        .pipe(gulp.dest('src/css')); //将会在src/css下生成index.css
+});
+
+gulp.task('default',['testLess', 'elseTask']); //定义默认任务 elseTask为其他任务，该示例没有定义elseTask任务
+ 
+//gulp.task(name[, deps], fn) 定义任务  name：任务名称 deps：依赖任务名称 fn：回调函数
+//gulp.src(globs[, options]) 执行任务处理的文件  globs：处理的文件路径(字符串或者字符串数组) 
+//gulp.dest(path[, options]) 处理完后文件生成路径
+
+   运行gulp：
+1、gulp [任务名称]
+2、如上例，想要编译less：gulp testLess
+3、当执行gulp default或gulp，将会调用default任务里的所有任务['testLess'，'elseTask']
+
+
+	gulp的4个常用API：
+
+   1、gulp.src( )；（简单的理解可以用这个方法来读取你需要操作的文件）
+如：gulp.src(globs[, option])，globs参数是文件匹配模式（类似正则表达式），用来匹配文件路径（包括文件名），当然这里也可以指定某个具体的文件路径。当有多个匹配模式时，该参数可以为数组
+option为可选参数，通常情况下我们不需要用到
+* ：匹配文件路径中的0个或多个字符，但不会匹配路径分隔符，除非路径分隔符出现在末尾
+** ：匹配路径中的0个或多个目录及其子目录,需要单独出现，即它左右不能有其他东西了。如果出现在末尾，也能匹配文件。
+? ：匹配文件路径中的一个字符(不会匹配路径分隔符)
+[...] ：匹配方括号中出现的字符中的任意一个，当方括号中第一个字符为^或!时，则表示不匹配方括号中出现的其他字符中的任意一个，类似js正则表达式中的用法
+使用数组的方式来匹配多种文件：gulp.src(['js/*.js','css/*.css','*.html'])
+gulp.src([*.js,'!b*.js']) ：匹配所有js文件，但排除掉以b开头的js文件
+gulp.src(['!b*.js',*.js]) ：不会排除任何文件，因为排除模式不能出现在数组的第一个元素中
+
+   2、gulp.dest( )：（这个方法是用来写文件的，如语法：gulp.dest(path[,options])）
+path为写入文件的路径
+option为可选参数对象，通常我们不需要用到
+
+关于gulp的使用流程：
+1、首先通过gulp.src()方法获取到我们想要处理的文件流
+2、然后把文件流通过pipe方法导入到gulp的插件中
+3、最后把经过插件处理后的流再通过pipe方法导入到gulp.dest()中，这个方法则把流中的内容写入到文件中
+4、需要注意的是，给gulp-dest()传入的路径参数，只能用来指定要生成的文件的目录，而不能指定生成的文件名。文件名默认使用的是它自身的文件名。所以文件名是由文件本身决定的 ，即使给它传入一个带有文件名的路径参数，这个方法也会把这个文件名当做是目录名，如：（想要改变文件名，可以使用插件gulp-rename来实现）
+var gulp = require('gulp');
+gulp.src('script/jquery.js')
+    .pipe(gulp.dest('dist/foo.js'));
+//最终生成的文件路径为 dist/foo.js/jquery.js,而不是dist/foo.js
+
+生成的文件路径与我们给gulp.dest()方法传入的路径参数之间的关系
+gulp.dest(path)生成的文件路径是我们传入的path参数，后面加上gulp.src()中有通配符开始出现的那部分路径。如：
+var gulp = reruire('gulp');
+//有通配符开始出现的那部分路径为 **/*.js
+gulp.src('script/**/*.js')
+    .pipe(gulp.dest('dist')); //最后生成的文件路径为 dist/**/*.js
+//如果 **/*.js 匹配到的文件为 jquery/jquery.js ,则生成的文件路径为 dist/jquery/jquery.js
+
+没有通配符的情况：
+gulp.src('script/avalon/avalon.js') //没有通配符出现的情况
+    .pipe(gulp.dest('dist')); //最后生成的文件路径为 dist/avalon.js
+
+通过指定gulp.src()方法配置参数中的base属性，我们可以更灵活的来改变gulp.dest()生成的文件路径
+当我们没有在gulp.src()方法中配置base属性是，base的默认值为通配符开始出现之前的那部分路径，如：
+gulp.src('app/src/**/*.css') //此时base的值为 app/src
+在这里，可以理解为gulp.dest()所生成的文件路径规则，其实就是给gulp.dest()传入的路径替换掉gulp.src()中的base路径后，最终得到生成文件的路径。如：
+gulp.src(script/lib/*.js) //没有配置base参数，此时默认的base路径为script/lib
+    //假设匹配到的文件为script/lib/jquery.js
+    .pipe(gulp.dest('build')) //生成的文件路径为 build/jquery.js
+
+gulp.src(script/lib/*.js, {base:'script'}) //配置了base参数，此时base路径为script
+    //假设匹配到的文件为script/lib/jquery.js
+    .pipe(gulp.dest('build')) //此时生成的文件路径为 build/lib/jquery.js
+
+用gulp.dset()把文件流写入文件后，文件流仍然可以继续使用
+
+   3、gulp.task()：（用来定义任务，内部使用的是Orchestrator，其语法为：gulp.task(name[, deps], fn)）
+name为任务名
+deps是当前定义的任务需要依赖的其他任务，为一个数组。当前定义的任务会在所有依赖的任务执行完毕后才可以最开始执行。如果没有依赖，则可省略这个 参数。
+fn为任务函数，我们把任务要执行的代码都写在这里。该参数也是可选的。如：
+gulp.task('mytask', ['array', 'of', 'task', 'names'], function() { //定义一个有依赖的任务
+  // Do something
+});
+gulp中执行多个 任务，可以通过任务依赖来实现。即定义一个空的任务，然后把依赖的任务当做这个空的任务的依赖就行了。如：
+//只要执行default任务，就相当于把one,two,three这三个任务执行了
+gulp.task('default',['one','two','three']);
+
+！注意：如果某个任务所依赖的任务是异步的，gulp并不会等待那个所依赖的异步任务完成，而是会接着执行后续的任务。如：
+gulp.task('one',function(){
+  //one是一个异步执行的任务
+  setTimeout(function(){
+    console.log('one is done')
+  },5000);
+});
+
+//two任务虽然依赖于one任务,但并不会等到one任务中的异步操作完成后再执行
+gulp.task('two',['one'],function(){
+  console.log('two is done');
+});
+上面的例子，执行two的时候，会先执行one任务，但不会等待one任务中的异步操作完成后在执行two，而是紧接着执行two任务。所以two任务会在one任务中的异步操作完成之前就执行了。
+想等待异步任务中的操作完成后，再执行后续任务，有以下几种方法：
+
+<一>：在异步操作执行完成后，执行一个回调函数来通知gulp这个异步任务已经完成，这个 回调函数就是任务函数的第一个参数：
+gulp.task('one',function(cb){ //cb为任务函数提供的回调，用来通知任务已经完成
+  //one是一个异步执行的任务
+  setTimeout(function(){
+    console.log('one is done');
+    cb();  //执行回调，表示这个异步任务已经完成
+  },5000);
+});
+
+//这时two任务会在one任务中的异步操作完成后再执行
+gulp.task('two',['one'],function(){
+  console.log('two is done');
+});
+
+<二>：定义任务是返回一个流对象。使用于任务就是操作gulp.src获取到的流的情况。
+gulp.task('one',function(cb){
+  var stream = gulp.src('client/**/*.js')
+      .pipe(dosomething()) //dosomething()中有某些异步操作
+      .pipe(gulp.dest('build'));
+    return stream;
+});
+
+gulp.task('two',['one'],function(){
+  console.log('two is done');
+});
+
+<三>：返回一个promise对象，如：
+var Q = require('q'); //一个著名的异步处理的库 https://github.com/kriskowal/q
+gulp.task('one',function(cb){
+  var deferred = Q.defer();
+  // 做一些异步操作
+  setTimeout(function() {
+     deferred.resolve();
+  }, 5000);
+  return deferred.promise;
+});
+
+gulp.task('two',['one'],function(){
+  console.log('two is done');
+});
+
+   4、gulp.watch()：用来监视文件的变化，当文件发生变化后，我们可以利用他来执行相应的任务，如文件压缩等。语法为：gulp.watch(glob[, opts], tasks)
+glob 为要监视的文件匹配模式，规则和用法与gulp.src()方法中的glob相同。
+opts 为一个可选的配置对象，通常不需要用到
+tasks为文件变化后要执行的任务，为一个数组。如：
+gulp.task('uglify',function(){
+  //do something
+});
+gulp.task('reload',function(){
+  //do something
+});
+gulp.watch('js/**/*.js', ['uglify','reload']);
+
+gulp.watch()还有另外一种使用方式：
+gulp.watch(glob[, opts, cb])
+glob和opts参数与第一种用法相同
+cd参数为一个函数。每当监视的文件发生变化时，就会调用这个函数，并且会给它传入一个对象，该对象包含了文件变化的一些信息，type属性为变化的类型，包括（added，changed，deleted）；path属性为发生变化的文件的路径。如：
+gulp.watch('js/**/*.js', function(event){
+    console.log(event.type); //变化类型 added为新增,deleted为删除，changed为改变 
+    console.log(event.path); //变化的文件的路径
+}); 
+
+
+
+   关于gulp的一些插件：
+1、gulp-concat：主要用于合并文件，把也就是多个文件合并到一个文件中，以节省存储空间。
+2、gulp-load-plugins：自动加载插件
+要使用gulp的插件，首先需要使用require来把插件加载进来，如果我们要使用的插件很多，那我们的gulpfile.js文件开头可能会变的很长，如：
+var gulp = require('gulp'),
+    //一些gulp插件,abcd这些命名只是用来举个例子
+    a = require('gulp-a'), 
+    b = require('gulp-b'),
+    //更多的插件...
+    z = require('gulp-z');   
+gulp-load-plugins插件正是用来解决这个问题的。
+这个插件能自动帮我们加载package.json文件里的gulp插件。假如package.json，如：
+{
+  "devDependencies": {
+    "gulp": "~3.6.0",
+    "gulp-rename": "~1.2.0",
+    "gulp-ruby-sass": "~0.4.3",
+    "gulp-load-plugins": "~0.5.1"
+  }
+}
+然后使用在gulpfile.js中的gulp-load-plugins来帮我们加载插件：
+var gulp = require('gulp');
+//加载gulp-load-plugins插件，并马上运行它
+var plugins = require('gulp-load-plugins')();
+
+然后我们要使用gulp-rename和gulp-ruby-sass这两个插件的时候，就可以使用plugins.rename和plugins.rudySass来代替了，也就是原始插件名去掉gulp-前缀，之后再转换为驼峰命名。实质上gulp-load-plugins是为我们做了如下的转换：
+plugins.rename = require('gulp-rename');
+plugins.rubySass = require('gulp-ruby-sass');
+
+gulp-load-plugins并不会一开始就加载所有package.json里的gulp插件，而是在我们需要用到某个插件的时候，才去加载哪个插件。
+需要注意的是因为gulp-load-plugins是通过package.json文件来加载插件的，所以必须要保证需要自动加载的插件已经写入到package.json文件里，并且这些插件都是已经安装好了的。
+
+   2、gulp-rename重命名（用来重命名文件流中的文件）
+用gulp.dest()方法写入文件时，文件名使用的是文件流中的文件名，如果要想改变文件名，那可以在之前用gulp-rename插件来改变文件流中的文件名。如：
+var gulp = require('gulp'),
+    rename = require('gulp-rename'),
+    uglify = require("gulp-uglify");
+ 
+gulp.task('rename', function () {
+    gulp.src('js/jquery.js')
+    .pipe(uglify())  //压缩
+    .pipe(rename('jquery.min.js')) //会将jquery.js重命名为jquery.min.js
+    .pipe(gulp.dest('js'));
+    //关于gulp-rename的更多强大的用法请参考https://www.npmjs.com/package/gulp-rename
+});
+
+   3、gulp-uglify（用来压缩js文件，使用的是uglify引擎）
+var gulp = require('gulp'),
+    uglify = require("gulp-uglify");
+ 
+gulp.task('minify-js', function () {
+    gulp.src('js/*.js') // 要压缩的js文件
+    .pipe(uglify())  //使用uglify进行压缩,更多配置请参考：
+    .pipe(gulp.dest('dist/js')); //压缩后的路径
+});
+
+    4、gulp-minify-css（用来进行css文件的压缩）
+var gulp = require('gulp'),
+    minifyCss = require("gulp-minify-css");
+ 
+gulp.task('minify-css', function () {
+    gulp.src('css/*.css') // 要压缩的css文件
+    .pipe(minifyCss()) //压缩css
+    .pipe(gulp.dest('dist/css'));
+});
+
+   5、gulp-minify-html（用来压缩html文件）
+var gulp = require('gulp'),
+    minifyHtml = require("gulp-minify-html");
+ 
+gulp.task('minify-html', function () {
+    gulp.src('html/*.html') // 要压缩的html文件
+    .pipe(minifyHtml()) //压缩
+    .pipe(gulp.dest('dist/html'));
+});
+
+   6、gulp-jsint（用来检查js代码）
+var gulp = require('gulp'),
+    jshint = require("gulp-jshint");
+ 
+gulp.task('jsLint', function () {
+    gulp.src('js/*.js')  //要检查的js代码
+    .pipe(jshint())
+    .pipe(jshint.reporter()); // 输出检查结果
+});
+
+   7、gulp-concat（用来把多个文件合并为一个文件，我们可以用它来合并js或css文件等，这样就能减少页面的http请求数了）
+var gulp = require('gulp'),
+    concat = require("gulp-concat");
+ 
+gulp.task('concat', function () {
+    gulp.src('js/*.js')  //要合并的文件
+    .pipe(concat('all.js'))  // 合并匹配到的js文件并命名为 "all.js"
+    .pipe(gulp.dest('dist/js'));
+});
+
+   8、gulp-less（编译less）、gulp-sass（编译sass）
+var gulp = require('gulp'),
+    less = require("gulp-less");
+ 
+gulp.task('compile-less', function () {
+    gulp.src('less/*.less')
+    .pipe(less())
+    .pipe(gulp.dest('dist/css'));
+});
+
+   9、gulp-livereload（当代码变化时，它可以帮我们自动刷新页面，该插件最好配合谷歌浏览器来使用，且要安装livereload chrome extension扩展插件）
+var gulp = require('gulp'),
+    less = require('gulp-less'),
+    livereload = require('gulp-livereload');
+
+gulp.task('less', function() {
+  gulp.src('less/*.less')
+    .pipe(less())
+    .pipe(gulp.dest('css'))
+    .pipe(livereload());
+});
+
+gulp.task('watch', function() {
+  livereload.listen(); //要在这里调用listen()方法
+  gulp.watch('less/*.less', ['less']);
+});
+
+
+   yargs是一个npm模块用来完成命令行参数解析的。
