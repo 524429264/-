@@ -1,0 +1,96 @@
+Node应用由模块组成，采用CommonJS模块规范
+
+每个文件就是一个模块，有自己的作用域。在一个文件里面定义的变量、函数、类，都是私有的，对其他文件不可见
+
+如果想在多个文件分享变量，必须定义为global对象的属性
+
+CommonJS规范规定，每个模块内部，module变量代表当前模块。这个变量是一个对象，他的exports属性是对外的接口。加载某个模块，其实是加载该模块的module.exports属性
+
+require方法用于加载模块
+
+
+	1、module对象
+
+Node内部提供一个Module构建函数。所有模块都是Module的实例
+
+每个模块内部，都有一个module对象，代表当前模块。它有以下属性：
+   - module.id 模块的识别符，通常是带有绝对路径的模块文件名。
+   - module.filename 模块的文件名，带有绝对路径。
+   - module.loaded 返回一个布尔值，表示模块是否已经完成加载。
+   - module.parent 返回一个对象，表示调用该模块的模块。
+   - module.children 返回一个数组，表示该模块要用到的其他模块。
+   - module.exports 表示模块对外输出的值。
+
+在命令行下调用某个模块，他的module.parent就是null。如果是脚本中调用，那module.parent就是调用它的模块。利用这点，就可以判断当前模块是否为入口脚本
+
+	1.1 module.exports属性
+module.exports属性表示当前模块对外输出的接口，其他文件加载该模块，实际上就是读取module.exports变量
+
+	1.2 export变量
+为了方便，Node为每个模块提供一个exports变量，指向module.export。在对外输出模块接口时，可以向exports对象添加方法（注意，不能直接将exports变量指向一个值，这会切断他和module.exports的联系）
+如果一个模块的对外接口，就是一个单一的值，不能使用exports输出，只能使用module.exports输出
+
+
+	2、AMD规范与CommonJS规范的兼容性
+
+CommonJS规范加载模块是同步的，AMD规范则是非同步加载模块，允许指定回调函数。
+Node.js主要用于服务器编程，模块文件一般都已经存在本地硬盘，加载快，所以不考虑非同步加载的方式，所以CommonJS规范比较适用
+而在浏览器环境，要从服务器加载模块，这时必须采用非同步模式，所以浏览器一般采用AMD规范
+
+AMD规范使用define方法定义模块，并且AMD规范允许输出的模块兼容CommonJS规范，但define方法需要做出一定的调整
+
+
+	3、require命令
+
+	3.1 基本用法
+Node使用CommonJS模块规范，内置的require命令用于加载模块文件
+
+require命令的基本功能是，读入并执行一个JavaScript文件，然后返回该模块的exports对象。如果没有发现指定模块，会报错（需要注意的是，如果模块输出的是一个函数，那就不能定义在exports对象上面，而要定义在moudule.exports变量上面）
+
+	3.2 加载规则
+require命令用于加载文件，后缀名默认为 .js
+
+根据参数的不同格式，require命令去不同的路径寻找模块文件：
+（1）如果参数字符串以“/”开头，则表示加载的是一个位于绝对路径的模块文件
+（2）如果参数字符串以“./”开头，则表示加载的是一个位于相对路径（跟当前执行脚本的位置相比）的模块文件
+（3）如果参数字符串不以“./“或”/“开头，则表示加载的是一个默认提供的核心模块（位于Node的系统安装目录中），或者一个位于各级node_modules目录的已安装模块（全局安装或局部安装）
+（4）如果参数字符串不以“./“或”/“开头，而且是一个路径，比如require('example-module/path/to/file')，则将先找到example-module的位置，然后再以它为参数，找到后续路径
+（5）如果指定的模块文件没有发现，Node会尝试为文件名添加.js、.json、.node后，再去搜索。.js件会以文本格式的JavaScript脚本文件解析，.json文件会以JSON格式的文本文件解析，.node文件会以编译后的二进制文件解析。
+（6）如果想得到require命令加载的确切文件名，使用require.resolve()方法
+
+	3.3 目录的加载规则
+一般的，把相关的文件放在一个目录里面，这样便于组织。这时最好为该目录设置一个入口文件，让require方法可以通过这个入口文件，加载整个目录
+
+require发现参数字符串指向一个目录后，会自动查看该目录的package.json文件，然后加载main字段指定的入口文件。如果package.json文件没有main字段，或者根本没有package.json文件，则会加载该目录下的index.js文件或index.node文件。所以，在目录中放置一个package.json文件，并且将入口文件写入main字段，是一个好办法
+
+	3.4 模块的缓存
+第一次加载某个模块时，Node会缓存该模块。以后在加载该模块，就直接从缓存取出该模块的module.exports属性
+
+如果想要多次执行某个模块，可以让该模块输出一个函数，然后每次require这个模块的时候，重新执行以下输出的函数
+
+所有缓存的模块保存在require.cache之中，如果想删除模块的缓存，可以这样写：
+delete require.cache[moduleName]；
+删除所有模块的缓存：
+Object.keys(require.cache).forEach(function (key){
+   delete require.cache[key] ;
+})；
+（注意：缓存是根据绝对路径识别模块的，如果同样的模块名，但是保存在不同的路径，require命令还是会重新加在该模块的）
+
+	3.5 环境变量NODE_PATH
+Node执行脚本时，会先查看环境变量NODE_PATH。它是一组以冒号分隔的绝对路径。在其他位置找不到指定模块时，Node会去这些路径查找
+NODE_PATH是历史遗留下来的一个路径解决方案，通常不应该使用，而应该使用node_modules目录机制
+
+	3.6 模块的循环加载
+如果发生模块的循环加载，即A加载B，B又加载A，则B将加载A的不完整版本
+
+	3.7 require.main
+require方法有一个main属性，可以用来判断模块是直接执行，还是被调用执行
+直接执行的时候（如：node module.js），require.main属性指向模块本身
+调用执行的时候（通过require加载该脚本执行）
+
+
+	4、模块的加载机制
+CommonJS模块的加载机制是，输入的是被输出的值的拷贝。也就是说，一旦输出一个值，模块内部的变化就影响不到这个值（这一点一定要小心体会！）
+
+	4.1 require的内部处理流程
+require命令是CommonJS规范之中，用来加载其他模块的命令。它不是一个 全局命令，而至指向当前模块的module.require命令，而后者有调用Node的内部命令Module._load
