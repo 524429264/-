@@ -93,3 +93,58 @@ define ( 'hello' , ['jquery'] , function (require , exports , module){
 } );
 
 注意：带 id 和 deps 参数的 define 用法不属于 CMD 规范，而属于 Modules/Transport 规范。
+
+define.cmd Object
+一个空对象，可用来判定当前页面是否有CMD模块加载器
+if (typeof define === "function" && define.cmd) {
+   // 有Sea.js 等 CMD 模块加载器存在
+}
+
+require Function
+require是factory函数的第一个参数
+
+require require(id)
+require是一个方法，接受模块标识作为唯一参数，用来获取其他模块提供的接口
+define ( function (require , exports){
+   // 获取模块 a 的接口
+   var a=require('./a');
+
+   // 调用模块 a 的方法
+   a.doSomethings();
+} ) ;
+
+require.async   require.async(id,callback?)
+require.async方法用来在模块内部异步加载模块，并在加载完成后执行指定回调。callback参数可选
+
+require是同步往下执行，require.async则是异步回调执行，require.async一般用来加载可延迟异步加载的模块
+
+require.resolve   require.resolve(id)
+实用模块系统内部的路径解析机制来解析并返回模块路径。该函数不会加载模块，只返回解析后的绝对路径（这可以用来获取模块路径，一般用在插件环境或需动态拼接模块路径的场景下）
+
+exports  Object
+exports是一个对象，用来向外提供模块接口
+
+除了给exports对象增加成员，还可以使用return直接向外提供接口，如果return语句是模块中的唯一代码，还可以进行一定的简化
+
+注意：exports仅仅是module.exports的一个引用。在factory内部给exports重新赋值时，并不会改变module.exports的值。因此给exports赋值是无效的，不能用来更改模块的接口
+
+module  Object
+module是一个对象，上面存储了与当前模块相关联的一些属性和方法
+
+module.id  String
+模块的唯一标识
+
+module.uri  String
+根据模块系统的路径解析规则得到的模块绝对路径
+define(function (require,exports,module){
+            console.log(module.uri);
+            // ==> http://example.com/path/to/this/file.js
+});
+一般情况下（没有define中手写id参数时），module.id的值就是module.uri，两者完全相同
+
+module.dependencies  Array
+dependencies是一个数组，表示当前模块的依赖
+
+module.exports  Object
+当前模块对外提供的接口
+传给factory构造方法的exports参数是 module.exports对象的一个引用。只通过exports参数来提供接口，有时无法满足开发者的所有需求。比如当模块的接口是某个类的实例是，需要通过module.exports来实现

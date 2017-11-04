@@ -7,13 +7,10 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Document</title>
     <script>
-        define(['myLib'],function (){
-            function foo(){
-                maLib.doSomething();
-            }
-            return {
-                foo : foo
-            };
+        define(function (require,exports,module){
+            console.log(exports===module.exports);
+            module.exports=new SomeClass();
+            console.log(exports===module.exports);
         });
     </script>
 </head>
