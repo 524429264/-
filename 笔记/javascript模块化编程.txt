@@ -148,3 +148,5 @@ dependencies是一个数组，表示当前模块的依赖
 module.exports  Object
 当前模块对外提供的接口
 传给factory构造方法的exports参数是 module.exports对象的一个引用。只通过exports参数来提供接口，有时无法满足开发者的所有需求。比如当模块的接口是某个类的实例是，需要通过module.exports来实现
+
+对module.exports的赋值需要同步执行，不能放在回调函数里
